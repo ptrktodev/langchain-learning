@@ -1,5 +1,6 @@
 __pycache__/
-.env-lang-udemy/
+env-lang-udemy/
+.env-
 .env
 .venv/
 .streamlit/
