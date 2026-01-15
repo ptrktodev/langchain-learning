@@ -2,7 +2,10 @@
 __pycache__/
 *.py[codz]
 *$py.class
-vscode/
+.vscode/
+uv.lock
+readme.md
+.python-version
 
 # C extensions
 *.so
