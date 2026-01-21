@@ -3,7 +3,7 @@ from langchain_groq.chat_models import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough, RunnableLambda
-from langchain_core.messages import trim_messages
+from langchain_core.messages import trim_messages # gerencia o tamanho da mensagem de historico
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_community.chat_message_histories import SQLChatMessageHistory
 
