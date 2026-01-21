@@ -6,6 +6,7 @@ __pycache__/
 uv.lock
 readme.md
 .python-version
+message_store.db
 
 # C extensions
 *.so
