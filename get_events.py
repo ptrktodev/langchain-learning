@@ -16,7 +16,6 @@ def get_event() -> dict:
 
     # Call the Calendar API
     now = datetime.datetime.now(tz=datetime.timezone.utc).isoformat()
-    print("Getting the upcoming 10 events")
     events_result = (
         service.events()
         .list(
@@ -86,15 +85,47 @@ def delete_event(id: str) -> dict:
     except Exception as e:
         return {"message": f"Erro ao deletar o evento: {e}"}
 
-if __name__ == "__main__":
-    print(delete_event('0afddd5ef7d2436d9b8db903652c57ae'))
-    
+def update_event(event_id: str, resumo: str, descricao: str, start_event: str, end_event: str) -> dict:
+    creds = ...
+    SCOPES = ["https://www.googleapis.com/auth/calendar", "https://www.googleapis.com/auth/calendar.readonly"]
 
-    '''
-    
+    if os.path.exists("token.json"):
+        creds = Credentials.from_authorized_user_file("token.json", SCOPES)
+
+    service = build("calendar", "v3", credentials=creds)
+
+    events_result = (
+        service.events()
+        .update(
+            calendarId="primary",
+            eventId=event_id,
+            body={
+                "summary": resumo,
+                "description": descricao,
+                "start": {
+                    "dateTime": start_event,
+                    "timeZone": "America/Sao_Paulo"
+                },
+                "end": {
+                    "dateTime": end_event,
+                    "timeZone": "America/Sao_Paulo"
+                }
+            }
+        ).execute()
+    ) 
+
+    if events_result['status'] == 'confirmed':
+        return {"message": "Evento atualizado com sucesso."}
+    else: 
+        return {"message": "Erro ao atualizar o evento."}
+
+if __name__ == "__main__":
+    print(update_event(event_id="6392754ce8cb4a3dac5f545cff4a740c", 
+                       resumo="Reunião Atualizada", 
+                       descricao="Descrição Atualizada", 
+                       start_event="2026-01-29T20:50:00-03:00", 
+                       end_event="2026-01-29T21:30:00-03:00"))
+'''    
     for event in get_event():
         print(event)
-        print('-----------------------')
-
-    
-    '''
+        print('-----------------------')'''

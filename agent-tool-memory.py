@@ -3,7 +3,6 @@ import os
 import os.path
 from zoneinfo import ZoneInfo
 
-import requests
 from dotenv import load_dotenv
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
@@ -21,6 +20,7 @@ from langchain_openai import ChatOpenAI
 load_dotenv()
 model = ChatOpenAI(model="gpt-3.5-turbo")
 tavily = TavilyClient()
+telegram_token = os.getenv("TELEGRAM_TOKEN")
 api_weather = os.getenv("WEATHER_API_KEY")
 
 @tool(description="Obtenha os próximos eventos do Google Calendar do usuário.")
@@ -175,19 +175,6 @@ def create_event(ano: int, mes: int, dia: int, hora_inicio: int, minuto_inicio: 
   else: 
     return ('Event not created')
 
-@tool(description="Obtenha a temperatura em tempo real para uma cidade específica.")
-def get_weather(city: str) -> str:
-    url = f"https://api.tomorrow.io/v4/weather/realtime?location={city}&apikey={api_weather}"
-    headers = {
-        "accept": "application/json",
-        "accept-encoding": "deflate, gzip, br"
-    }
-    response = requests.get(url, headers=headers)
-    if response.status_code == 200:
-        return response.json()
-    else:  
-        return f"Erro: status code {response.status_code}"
-
 @tool(description="Deleta um evento específico do Google Calendar do usuário.")
 def delete_event(id: str) -> dict:
     """
@@ -229,7 +216,42 @@ def delete_event(id: str) -> dict:
     except Exception as e:
         return {"message": f"Erro ao deletar o evento: {e}"}
 
-tools = [create_event, get_weather, get_event, delete_event] 
+@tool(description="Atualiza um evento específico do Google Calendar do usuário.")
+def update_event(event_id: str, resumo: str, descricao: str, start_event: str, end_event: str) -> dict:
+    creds = ...
+    SCOPES = ["https://www.googleapis.com/auth/calendar", "https://www.googleapis.com/auth/calendar.readonly"]
+
+    if os.path.exists("token.json"):
+        creds = Credentials.from_authorized_user_file("token.json", SCOPES)
+
+    service = build("calendar", "v3", credentials=creds)
+
+    events_result = (
+        service.events()
+        .update(
+            calendarId="primary",
+            eventId=event_id,
+            body={
+                "summary": resumo,
+                "description": descricao,
+                "start": {
+                    "dateTime": start_event,
+                    "timeZone": "America/Sao_Paulo"
+                },
+                "end": {
+                    "dateTime": end_event,
+                    "timeZone": "America/Sao_Paulo"
+                }
+            }
+        ).execute()
+    ) 
+
+    if events_result['status'] == 'confirmed':
+        return {"message": "Evento atualizado com sucesso."}
+    else: 
+        return {"message": "Erro ao atualizar o evento."}
+
+tools = [create_event, update_event, get_event, delete_event]
 
 def get_session_history(session_id: str):
     # String de conexão PostgreSQL para Supabase
@@ -264,7 +286,7 @@ system_prompt = """Você é um assistente pessoal inteligente especializado em g
 
 Você tem acesso às seguintes ferramentas:
 
-1. **get_weather**: Obtém informações meteorológicas em tempo real para uma localização específica
+1. **update_event**: Atualiza um evento específico no Google Calendar do usuário
 2. **create_event**: Cria novos eventos no Google Calendar do usuário
 3. **get_events**: Recupera os próximos eventos agendados do usuário
 4. **delete_event**: Deleta um evento específico do Google Calendar do usuário
@@ -278,10 +300,26 @@ Você tem acesso às seguintes ferramentas:
 
 ### Uso das Ferramentas
 
-**Para consultas de clima:**
-- Use get_weather quando o usuário perguntar sobre condições meteorológicas
-- Forneça informações relevantes como temperatura, condições e previsão
-- Sugira preparações adequadas (ex: levar guarda-chuva se houver previsão de chuva)
+**Para atualizar eventos existentes:**
+1. Use a ferramenta `get_event` para buscar o evento pelo ID e obter todos os dados atuais
+2. Identifique quais campos o usuário deseja alterar
+3. Para os campos NÃO mencionados pelo usuário, mantenha os valores originais obtidos do `get_event`
+4. Confirme com o usuário os detalhes da atualização antes de executar
+5. Use `update_event` passando:
+   - event_id (obrigatório)
+   - Apenas os campos que serão alterados OU todos os campos (novos + originais)
+Exemplo de fluxo:
+- Usuário: "Atualiza o evento X para começar às 15h"
+- Agente: 
+  1. Chama `get_event(event_id="X")` 
+  2. Obtém dados atuais (título, descrição, horário original, etc)
+  3. Confirma: "Vou atualizar o evento 'Reunião' do dia 29/01 para começar às 15h (fim às 15:30). O título e descrição permanecerão os mesmos. Confirma?"
+  4. Após confirmação, chama `update_event(event_id="X", start_event="...", end_event="...", resumo="valor_original", descricao="valor_original")`
+
+**Importante:** 
+- SEMPRE busque os dados atuais com `get_event` antes de atualizar
+- NUNCA invente ou assuma valores para campos não mencionados
+- SEMPRE mostre o resumo das alterações antes de executar
 
 **Para consulta de eventos:**
 - Use get_event quando o usuário quiser saber sua agenda
