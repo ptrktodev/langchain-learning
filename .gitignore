@@ -10,6 +10,7 @@ readme.md
 message_store.db
 credentials.json
 token.json
+agent-calendar-me-v2.py
 
 # C extensions
 *.so
